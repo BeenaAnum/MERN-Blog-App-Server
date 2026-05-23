@@ -52,7 +52,7 @@ const app = express();
 
 // ─── Middleware ───────────────────────────────────────────
 const frontendURL = process.env.NODE_ENV === 'production'
-  ? process.env.FRONTEND_URL || 'http://localhost:5173'
+  ? process.env.FRONTEND_URL || 'https://mern-blog-app-client-o1cypgric-beena-anums-projects.vercel.app'
   : 'http://localhost:5173';
 
 app.use(cors({

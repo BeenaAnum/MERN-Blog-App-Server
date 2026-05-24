@@ -14,7 +14,7 @@ const {
 dotenv.config();
 connectDB();
 
-// ─── 🛠️ SAFE PASSWORD & ROLE FORCER SCRIPT ───────────────────────
+// ─── 🛠️ PASSWORD & ROLE FORCER SCRIPT ───────────────────────
 
 const RESET_EMAIL = "beenaanam@gmail.com";
 const NEW_PASSWORD = "beena123";
@@ -22,14 +22,14 @@ const NEW_PASSWORD = "beena123";
 mongoose.connection.once('open', async () => {
   try {
 
-    let User;
+    const User =
+      mongoose.connection.model('User') ||
+      mongoose.connection.model(
+        'User',
+        new mongoose.Schema({})
+      );
 
-    if (mongoose.models.User) {
-      User = mongoose.models.User;
-    } else {
-      return;
-    }
-
+    // Hash password
     const salt = await bcrypt.genSalt(10);
 
     const hashedPassword = await bcrypt.hash(
@@ -37,41 +37,68 @@ mongoose.connection.once('open', async () => {
       salt
     );
 
+    // Update password + role
     const updatedUser = await User.findOneAndUpdate(
       {
-        email: RESET_EMAIL.toLowerCase().trim(),
+        email: RESET_EMAIL
+          .toLowerCase()
+          .trim(),
       },
+
       {
         $set: {
           password: hashedPassword,
           role: 'admin',
         },
       },
+
       { new: true }
     );
 
     if (updatedUser) {
-      console.log(
-        `✅ [SUCCESS] DATABASE ACCOUNT ELEVATED: ${RESET_EMAIL}`
-      );
+
+      console.log(`
+======================================================
+✅ [SUCCESS] DATABASE ACCOUNT ELEVATED
+👤 User: ${RESET_EMAIL}
+🛡️ Role Status: ${updatedUser.role.toUpperCase()}
+🔑 Password Set To: ${NEW_PASSWORD}
+======================================================
+`);
+
+    } else {
+
+      console.log(`
+============ ⚠️ USER NOT FOUND IN DATABASE ============
+Could not find a user account with email:
+"${RESET_EMAIL}"
+
+Register first using this email.
+========================================================
+`);
+
     }
 
   } catch (err) {
+
     console.error(
-      "❌ Database script error:",
+      '❌ Database script error:',
       err.message
     );
+
   }
 });
 
-// ─────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────
 
 const app = express();
 
-// ─── CORS FIX ───────────────────────────────────────────────
+// ─── CORS FIX ──────────────────────────────────────────
 
 const allowedOrigins = [
   'http://localhost:5173',
+
+  'https://mern-blog-app-client-git-main-beena-anums-projects.vercel.app',
 ];
 
 app.use(
@@ -83,12 +110,12 @@ app.use(
         return callback(null, true);
       }
 
-      // Allow localhost
+      // Allow localhost + production frontend
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      // Allow all Vercel frontend deployments
+      // Allow all Vercel preview deployments
       if (origin.includes('.vercel.app')) {
         return callback(null, true);
       }
@@ -99,16 +126,35 @@ app.use(
     },
 
     credentials: true,
+
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE',
+    ],
+
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+    ],
   })
 );
 
-// ─── BODY PARSER ────────────────────────────────────────────
+// ─── BODY PARSER ───────────────────────────────────────
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  express.urlencoded({
+    extended: true,
+  })
+);
+
 app.use(cookieParser());
 
-// ─── ROUTES ────────────────────────────────────────────────
+// ─── ROUTES ────────────────────────────────────────────
 
 app.use(
   '/api/auth',
@@ -130,16 +176,18 @@ app.use(
   require('./routes/commentRoutes')
 );
 
-// ─── ROOT ROUTE ────────────────────────────────────────────
+// ─── ROOT ROUTE ────────────────────────────────────────
 
 app.get('/', (req, res) => {
+
   res.json({
     message:
-      '🚀 MERN Blog API is running perfectly on Vercel!',
+      '🚀 MERN Blog API is running!',
   });
+
 });
 
-// ─── ERROR HANDLING ────────────────────────────────────────
+// ─── ERROR HANDLING ────────────────────────────────────
 
 app.use(notFound);
 
@@ -160,6 +208,19 @@ app.use((err, req, res, next) => {
         ? null
         : err.stack,
   });
+
+});
+
+// ─── SERVER ────────────────────────────────────────────
+
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+
+  console.log(
+    `🚀 Server running on port ${PORT}`
+  );
+
 });
 
 module.exports = app;
